@@ -1,0 +1,54 @@
+#!/bin/bash
+
+CURDIR=`pwd`
+BUILDDIR='.buildDir'
+BINDIR='bin'
+LIBDIR='lib'
+DEBUG=""
+
+VERBOSE=""
+
+removeFolder() {
+    if [ -d "$1" ]; then
+        echo "Remove folder $1"
+        rm -rf $1
+    fi
+}
+
+if [ "$1" = 'clean' ]; then
+    echo "Cleanup..."
+    removeFolder $BUILDDIR
+    removeFolder $BINDIR
+    removeFolder $LIBDIR
+    rm -f core
+    exit 0
+fi
+
+
+if [ "$1" = 'DEBUG' ]; then
+    DEBUG="-DCMAKE_BUILD_TYPE=Debug"
+    VERBOSE="VERBOSE=1"
+fi
+
+if [ ! -d "$BUILDDIR" ]; then
+  echo "Create folder $BUILDDIR"
+  mkdir $BUILDDIR
+fi
+
+cd $BUILDDIR
+
+cmake $DEBUG ..
+
+if [ $? -ne 0 ]; then
+    cd $CURDIR
+    exit 1
+fi
+
+make $VERBOSE
+
+if [ $? -ne 0 ]; then
+    cd $CURDIR
+    exit 1
+fi
+
+cd $CURDIR

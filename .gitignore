@@ -1,0 +1,5 @@
+.vscode
+.buildDir
+bin
+lib
+

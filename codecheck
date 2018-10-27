@@ -1,0 +1,109 @@
+#!/bin/sh
+
+CURDIR=`pwd`
+BUILDDIR='.buildDir'
+BINDIR='bin'
+REPORTS='../reports'
+CODECHECK=$REPORTS'/static-analysis'
+PRJNAME='Payment System'
+
+removeFolder() {
+    if [ -d "$1" ]; then
+        echo "Remove folder $1"
+        rm -rf $1
+    fi
+}
+
+createFolderCheckModule() {
+    if [ ! -d "${CODECHECK}/$1" ]; then
+        echo "Create folder ${CODECHECK}/$1"
+        mkdir ${CODECHECK}/$1
+    fi
+}
+
+checkValidFolder() {
+    if [ -e "$1/CMakeLists.txt" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+printUsage() {
+    echo "Usage : execTest target [option]"
+    exit 0
+}
+
+runCheck() {
+    echo "Run cpp check for $1"
+    createFolderCheckModule $1
+    OUTPUTDIR=${CODECHECK}/$1
+    ls $1/*pp $1/*.c $1/*.h 1>${OUTPUTDIR}/filelist 2> ${OUTPUTDIR}/warn
+
+    SRCDIR=$1
+    INC="-I $SRCDIR"
+    if [ $GTEST_INCLUDE ]; then
+        INC=$INC." -I ${GTEST_INCLUDE}"
+        echo $INC
+    fi 
+
+    cppcheck --enable=all --inconclusive --xml-version=2 --force \
+    ${INC} \
+    --library=windows,posix,gnu --file-list=${OUTPUTDIR}/filelist \
+    2> ${OUTPUTDIR}/result.xml
+
+    cppcheck-htmlreport --source-encoding="iso8859-1" --title=${PRJNAME} --source-dir=${SRCDIR} --report-dir=${OUTPUTDIR} \
+    --file=${OUTPUTDIR}/result.xml 2> $OUTPUTDIR/warn
+
+}
+
+runCheckAllFolder() {
+    echo "Run all"
+    for DIR in */; do
+        if checkValidFolder $DIR; then
+            runCheck $DIR
+        fi
+    done
+}
+
+if [ ! "$#" -gt 0 ];then 
+    printUsage
+fi
+
+if [ "$1" = 'clean' ]; then
+    echo "Cleanup..."
+    removeFolder $CODECHECK
+    exit 0
+fi
+
+if [ "$1" = '--help' || "$1" = '-h' ]; then
+    printUsage
+fi
+
+if [ ! -d "$REPORTS" ]; then
+  echo "Create folder $REPORTS"
+  mkdir $REPORTS
+fi
+
+if [ ! -d "$CODECHECK" ]; then
+  echo "Create folder $CODECHECK"
+  mkdir $CODECHECK
+fi
+
+if [ "$1" = "--all" ]; then
+    echo "Run all Test Cases"
+    runCheckAllFolder
+    exit 0
+fi
+
+if [ ! -d "$1" ]; then
+    echo "$1 is not existed"
+    printUsage
+fi
+
+if [ ! checkValidFolder $1 ]; then
+    echo "$1 is not a source folder"
+    exit
+fi
+
+runCheck $1
