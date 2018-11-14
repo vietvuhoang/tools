@@ -18,6 +18,7 @@ private:
     int fd;
     progress_cb_t progressCb;
     generate_buffer_cb_t genCb;
+    bool everytime;
     void release();
     void linkAt();
 public: 
