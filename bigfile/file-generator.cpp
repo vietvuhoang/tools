@@ -11,13 +11,17 @@
 
 #include <iostream>
 
-#define MB (1024*1024)
+#define MB (1024 * 1024)
 
-#define _10MB (10*MB)
+#define _10MB (10 * MB)
 
-FileGenerator::FileGenerator(const std::string &name, unsigned long size) : name(name), size(size), fd(0)
+FileGenerator::FileGenerator(const std::string &name,
+                             unsigned long size,
+                             generate_buffer_cb_t gcb, 
+                             progress_cb_t pcb) : name(name), size(size), fd(0), progressCb(pcb), genCb(gcb)
 {
-    if (size == 0) throw InvalidFileSizeExp();
+    if (size == 0)
+        throw InvalidFileSizeExp();
     FilePathValidator validator(name);
     validator.validate();
 }
@@ -39,55 +43,67 @@ void FileGenerator::release()
 }
 
 void FileGenerator::generate()
-{    
+{
     std::string folder;
 
     StringUtils::getDirPathFromFilePath(name, folder);
 
-    FileGenerator::checkFreeSpace( folder, size );
+    FileGenerator::checkFreeSpace(folder, size);
 
-    int tmpFile = open(folder.c_str(), O_TMPFILE | O_RDWR, S_IRUSR | S_IWUSR);
+    int tmpFile = open(folder.c_str(), O_TMPFILE | O_RDWR | O_LARGEFILE, S_IRUSR | S_IWUSR);
 
-    if (tmpFile < 0 ) {
+    if (tmpFile < 0)
+    {
         char err[PATH_MAX];
-        snprintf( err, PATH_MAX, "[%s] %s", folder.c_str(), strerror(errno) );
-        throw CouldNotOpenFileExp( err );
-    }   
+        snprintf(err, PATH_MAX, "[%s] %s", folder.c_str(), strerror(errno));
+        throw CouldNotOpenFileExp(err);
+    }
 
     this->fd = tmpFile;
 
     unsigned long total = 0;
 
-    unsigned char buff[ 4 * MB];
+    unsigned char buff[4 * MB];
 
-    do {
+    if ( genCb ) genCb( buff, sizeof(buff));
+
+    do
+    {
 
         size_t sz = 0;
-        
-        if ( (size - total) > sizeof(buff) ) {
+
+        if ((size - total) > sizeof(buff))
+        {
             sz = sizeof(buff);
-        } else {
+        }
+        else
+        {
             sz = size - total;
         }
 
-        int ret = write( fd, buff, sz );
-        
-        if ( ret < 0 ) throw CouldNotCompleteWriteJobExp();
+        int ret = write(fd, buff, sz);
+
+        if (ret < 0)
+            throw CouldNotCompleteWriteJobExp();
 
         total += ret;
 
-    } while ( total < size );
+        if ( progressCb ) progressCb( total, size );
+
+    } while (total < size);
 
     sync();
     this->linkAt();
     this->release();
 }
 
-void FileGenerator::linkAt() {
+void FileGenerator::linkAt()
+{
     char path[PATH_MAX];
-    snprintf(path, PATH_MAX,  "/proc/self/fd/%d", fd);
-    int ret = linkat( AT_FDCWD, path, AT_FDCWD, name.c_str(), AT_SYMLINK_FOLLOW );
-    if ( ret < 0 ) throw CouldNotCompleteWriteJobExp();
+    snprintf(path, PATH_MAX, "/proc/self/fd/%d", fd);
+    int ret = linkat(AT_FDCWD, path, AT_FDCWD, name.c_str(), AT_SYMLINK_FOLLOW);
+    if (ret < 0)
+        throw CouldNotCompleteWriteJobExp();
 }
 
 FilePathValidator::FilePathValidator(const std::string &name) : name(name)
@@ -116,12 +132,15 @@ void FilePathValidator::validate()
         throw InvalidFolderExp(name);
 }
 
-void FileGenerator::checkFreeSpace( const std::string& folder, unsigned long size ) {
+void FileGenerator::checkFreeSpace(const std::string &folder, unsigned long size)
+{
     struct statvfs info;
 
-    int ret = statvfs( folder.c_str() , &info );
+    int ret = statvfs(folder.c_str(), &info);
 
-    if ( ret < 0 ) throw CouldNotCheckFolderExp( folder );
+    if (ret < 0)
+        throw CouldNotCheckFolderExp(folder);
 
-    if ( (info.f_bsize * info.f_bfree) < size ) throw SpaceNotEnoughtExp();
+    if ((info.f_bsize * info.f_bfree) < size)
+        throw SpaceNotEnoughtExp();
 }

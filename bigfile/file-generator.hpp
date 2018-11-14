@@ -5,6 +5,10 @@
 #include "app-exception.hpp"
 #include "ivalidator.hpp"
 #include "igenerator.hpp"
+#include <functional>
+
+typedef void (*progress_cb_t)(unsigned long, unsigned long);
+typedef void (*generate_buffer_cb_t)(unsigned char*, unsigned int size);
 
 class FileGenerator : public IGenerator {
 
@@ -12,11 +16,13 @@ private:
     std::string name;
     unsigned long size;
     int fd;
+    progress_cb_t progressCb;
+    generate_buffer_cb_t genCb;
     void release();
     void linkAt();
 public: 
     static void checkFreeSpace( const std::string& folder, unsigned long size );
-    FileGenerator( const std::string& name, unsigned long size );
+    FileGenerator( const std::string& name, unsigned long size, generate_buffer_cb_t gcb = NULL, progress_cb_t pcb = NULL );
     virtual ~FileGenerator();
     void generate();
 };
@@ -36,7 +42,6 @@ public:
     InvalidFileExp(const std::string& path) : AppException(path) {}
     virtual ~InvalidFileExp() {}
 };
-
 
 class InvalidFileSizeExp : public InvalidFileExp {
 public:
@@ -69,7 +74,6 @@ public:
     virtual ~SpaceNotEnoughtExp() {}
 };
 
-
 class CouldNotCompleteWriteJobExp : public InvalidFileExp {
 public:
     CouldNotCompleteWriteJobExp() : InvalidFileExp() {}
@@ -81,7 +85,6 @@ class FileExistedExp : public InvalidFilePathExp {
     FileExistedExp(const std::string& path) : InvalidFilePathExp( path ) {}
     virtual ~FileExistedExp() {}  
 };
-
 
 class InvalidFolderExp : public InvalidFilePathExp {
   public:
