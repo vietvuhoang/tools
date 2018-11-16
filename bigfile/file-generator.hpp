@@ -7,8 +7,11 @@
 #include "igenerator.hpp"
 #include <functional>
 
-typedef void (*progress_cb_t)(unsigned long, unsigned long);
-typedef void (*generate_buffer_cb_t)(unsigned char*, unsigned int size);
+// typedef void (*progress_cb_t)(unsigned long, unsigned long);
+// typedef void (*generate_buffer_cb_t)(unsigned char*, unsigned int size);
+
+using ProcessCb = std::function<void(unsigned long, unsigned long)>;
+using GenerateBufferCb = std::function<void(unsigned char*, unsigned long size)>;
 
 class FileGenerator : public IGenerator {
 
@@ -16,14 +19,14 @@ private:
     std::string name;
     unsigned long size;
     int fd;
-    progress_cb_t progressCb;
-    generate_buffer_cb_t genCb;
+    ProcessCb progressCb;
+    GenerateBufferCb genCb;
     bool everytime;
     void release();
     void linkAt();
 public: 
     static void checkFreeSpace( const std::string& folder, unsigned long size );
-    FileGenerator( const std::string& name, unsigned long size, generate_buffer_cb_t gcb = NULL, progress_cb_t pcb = NULL );
+    FileGenerator( const std::string& name, unsigned long size, GenerateBufferCb pcb = NULL, ProcessCb gcb = NULL );
     virtual ~FileGenerator();
     void generate();
 };

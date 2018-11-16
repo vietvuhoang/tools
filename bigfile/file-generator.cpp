@@ -17,8 +17,8 @@
 
 FileGenerator::FileGenerator(const std::string &name,
                              unsigned long size,
-                             generate_buffer_cb_t gcb, 
-                             progress_cb_t pcb) : name(name), size(size), fd(0), progressCb(pcb), genCb(gcb), everytime(false)
+                             GenerateBufferCb gcb,
+                             ProcessCb pcb) : name(name), size(size), fd(0), progressCb(pcb), genCb(gcb), everytime(false)
 {
     if (size == 0)
         throw InvalidFileSizeExp();
